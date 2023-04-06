@@ -1,17 +1,14 @@
+use cgmath::Vector2;
 use error_iter::ErrorIter as _;
-use log::{debug, error};
+use log::error;
 use pixels::{Error, Pixels, SurfaceTexture};
 use winit::{
     dpi::LogicalSize,
     event::{Event, VirtualKeyCode},
     event_loop::{ControlFlow, EventLoop},
-    window::{WindowBuilder, Fullscreen},
+    window::WindowBuilder,
 };
 use winit_input_helper::WinitInputHelper;
-use cgmath::{
-    Vector2,
-    Matrix2,
-};
 
 mod raycaster;
 
@@ -42,7 +39,11 @@ fn main() -> Result<(), Error> {
 
     let mut camera = raycaster::Camera::new(Vector2::new(5.0, 5.0), 0.0, 60f64.to_radians());
     let mut map = raycaster::Map::new(10, 10);
-    let wall = raycaster::Tile::WALL(raycaster::Wall{texture: 0});
+
+    let texture = map.new_texture("textures/wall1.png");
+    let wall = map.new_tile(raycaster::Tile{
+        color: raycaster::WallColor::TEXTURE(texture),
+    });
     for i in 0..10 {
         map.set_tile(i, 0, wall);
         map.set_tile(i, 9, wall);
@@ -69,7 +70,7 @@ fn main() -> Result<(), Error> {
                 return;
             }
 
-            const MOVE_SPEED: f64 = 3.0/60.0;
+            const MOVE_SPEED: f64 = 3.0 / 60.0;
             if input.key_held(VirtualKeyCode::W) {
                 camera.translate(Vector2::new(0.0, MOVE_SPEED));
             }
@@ -77,14 +78,14 @@ fn main() -> Result<(), Error> {
                 camera.translate(Vector2::new(0.0, -MOVE_SPEED));
             }
 
-            const ROT_SPEED: f64 = 2.0/60.0;
+            const ROT_SPEED: f64 = 2.0 / 60.0;
             if input.key_held(VirtualKeyCode::D) {
                 camera.rotate(ROT_SPEED);
             }
             if input.key_held(VirtualKeyCode::A) {
                 camera.rotate(-ROT_SPEED);
             }
-            
+
             if let Some(size) = input.window_resized() {
                 if let Err(err) = pixels.resize_surface(size.width, size.height) {
                     log_error("pixels.resize_surface", err);
