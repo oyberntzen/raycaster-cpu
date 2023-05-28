@@ -40,15 +40,15 @@ fn main() -> Result<(), Error> {
     let mut camera = raycaster::Camera::new(Vector2::new(5.0, 5.0), 0.0, 60f64.to_radians());
     let mut map = raycaster::Map::new(10, 10);
 
-    let texture = map.new_texture("textures/wall1.png");
-    let wall = map.new_tile(raycaster::Tile{
-        color: raycaster::WallColor::TEXTURE(texture),
-    });
+    //let texture = map.new_texture("textures/wall1.png");
+    //let wall = map.new_tile(raycaster::Tile{
+    //    color: raycaster::WallColor::TEXTURE(texture),
+    //});
     for i in 0..10 {
-        map.set_tile(i, 0, wall);
-        map.set_tile(i, 9, wall);
-        map.set_tile(0, i, wall);
-        map.set_tile(9, i, wall);
+        map.set_tile(i, 0, raycaster::Tile::WALL([255; 3]));
+        map.set_tile(i, 9, raycaster::Tile::WALL([255; 3]));
+        map.set_tile(0, i, raycaster::Tile::WALL([255; 3]));
+        map.set_tile(9, i, raycaster::Tile::WALL([255; 3]));
     }
 
     event_loop.run(move |event, _, control_flow| {
