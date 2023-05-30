@@ -80,7 +80,7 @@ pub struct Map {
 impl Map {
     pub fn new(width: usize, height: usize) -> Self {
         let mut tiles = Vec::<Tile>::new();
-        tiles.resize(width * height, Tile{shape: Shape::VOID, color: Color::SOLID([255; 3])});
+        tiles.resize(width * height, Tile{shape: Shape::Void, color: Color::SOLID([255; 3])});
         Self {
             width,
             height,

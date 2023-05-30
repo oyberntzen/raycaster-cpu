@@ -2,17 +2,19 @@ use cgmath::{Vector2};
 
 #[derive(Clone, Copy)]
 pub enum Shape {
-    VOID,
-    BOX,
-    AXIS_ALIGNED_BOX(AxisAlignedBox),
+    Void,
+    Box,
+    AxisAlignedBox(AxisAlignedBox),
+    Circle(Circle),
 }
 
 impl Shape {
     pub fn ray_cast(&self, pos: Vector2<f64>, dir: Vector2<f64>) -> Option<f64> {
         match self {
-            Self::VOID => None,
-            Self::BOX => Some(0.0),
-            Self::AXIS_ALIGNED_BOX(shape) => shape.ray_cast(pos, dir),
+            Self::Void => None,
+            Self::Box => Some(0.0),
+            Self::AxisAlignedBox(shape) => shape.ray_cast(pos, dir),
+            Self::Circle(shape) => shape.ray_cast(pos, dir),
         }
     }
 }
@@ -36,5 +38,36 @@ impl AxisAlignedBox {
         if x >= self.min.x && x <= self.max.x && a >= 0.0 { return Some(a) };
 
         None
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Circle {
+    pub pos: Vector2<f64>,
+    pub radius: f64,
+}
+
+impl Circle {
+    fn ray_cast(&self, pos: Vector2<f64>, dir: Vector2<f64>) -> Option<f64> {
+        let a = dir.x*dir.x + dir.y*dir.y;
+        let b = 2.0 * (dir.x*(pos.x-self.pos.x) + dir.y*(pos.y-self.pos.y));
+        let k = pos - self.pos;
+        let c = k.x*k.x + k.y*k.y - self.radius*self.radius;
+
+        let in_sqrt = b*b - 4.0*a*c;
+        if in_sqrt > 0.0 {
+            let sqrt = in_sqrt.sqrt();
+            let l1 = (-b - sqrt) / (2.0 * a);
+            let l2 = (-b + sqrt) / (2.0 * a);
+            if l1 >= 0.0 {
+                Some(l1)
+            } else if l2 >= 0.0 {
+                Some(l2)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     }
 }
