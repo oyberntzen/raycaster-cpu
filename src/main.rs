@@ -65,6 +65,24 @@ fn main() -> Result<(), Error> {
     };
     map.set_tile(5, 5, wall2);
 
+    let wall3 = raycaster::Tile {
+        shape: raycaster::Shape::AxisAlignedBox(raycaster::AxisAlignedBox {
+            min: Vector2 { x: 0.2, y: 0.2 },
+            max: Vector2 { x: 0.3, y: 0.8 },
+        }),
+        color: raycaster::Color::Test,
+    };
+    map.set_tile(6, 5, wall3);
+
+    let wall4 = raycaster::Tile {
+        shape: raycaster::Shape::Line(raycaster::Line {
+            start: Vector2 { x: 0.0, y: 0.0 },
+            end: Vector2 { x: 1.0, y: 1.0 },
+        }),
+        color: raycaster::Color::Test,
+    };
+    map.set_tile(7, 5, wall4);
+
     event_loop.run(move |event, _, control_flow| {
         if let Event::RedrawRequested(_) = event {
             raycaster::render(pixels.frame_mut(), WIDTH, HEIGHT, &camera, &map);

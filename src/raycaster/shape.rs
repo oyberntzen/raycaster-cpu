@@ -1,6 +1,6 @@
 use std::f64::consts::PI;
 
-use cgmath::Vector2;
+use cgmath::{InnerSpace, Vector2};
 
 #[derive(Clone, Copy)]
 pub enum Shape {
@@ -8,6 +8,7 @@ pub enum Shape {
     Box,
     AxisAlignedBox(AxisAlignedBox),
     Circle(Circle),
+    Line(Line),
 }
 
 impl Shape {
@@ -23,6 +24,7 @@ impl Shape {
             }
             Self::AxisAlignedBox(shape) => shape.ray_cast(pos, dir),
             Self::Circle(shape) => shape.ray_cast(pos, dir),
+            Self::Line(shape) => shape.ray_cast(pos, dir),
         }
     }
 }
@@ -48,7 +50,7 @@ impl AxisAlignedBox {
         };
         let a = (x - pos.x) / dir.x;
         let y = a * dir.y + pos.y;
-        if y >= self.min.y && y <= self.max.y && a+0.001 >= 0.0 {
+        if y >= self.min.y && y <= self.max.y && a + 0.001 >= 0.0 {
             return Some(ShapeHitInfo {
                 length: a,
                 x: (y - self.min.y) / (self.max.y - self.min.y),
@@ -63,7 +65,7 @@ impl AxisAlignedBox {
         };
         let a = (y - pos.y) / dir.y;
         let x = a * dir.x + pos.x;
-        if x >= self.min.x && x <= self.max.x && a+0.001 >= 0.0 {
+        if x >= self.min.x && x <= self.max.x && a + 0.001 >= 0.0 {
             return Some(ShapeHitInfo {
                 length: a,
                 x: (x - self.min.x) / (self.max.x - self.min.x),
@@ -114,6 +116,44 @@ impl Circle {
             })
         } else {
             None
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Line {
+    pub start: Vector2<f64>,
+    pub end: Vector2<f64>,
+}
+
+impl Line {
+    fn ray_cast(&self, pos: Vector2<f64>, dir: Vector2<f64>) -> Option<ShapeHitInfo> {
+        let x1 = pos.x;
+        let y1 = pos.y;
+        let x2 = pos.x + dir.x;
+        let y2 = pos.y + dir.y;
+
+        let x3 = self.start.x;
+        let y3 = self.start.y;
+        let x4 = self.end.x;
+        let y4 = self.end.y;
+
+        let div = 1.0 / ((x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4));
+        let t = div * ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4));
+        let u = div * ((x1 - x3) * (y1 - y2) - (y1 - y3) * (x1 - x2));
+        if t + 0.001 < 0.0 || u < 0.0 || u > 1.0 {
+            None
+        } else {
+            let side = if (self.end - self.start).dot(dir) > 0.0 {
+                0
+            } else {
+                1
+            };
+            Some(ShapeHitInfo {
+                length: t,
+                x: u,
+                side,
+            })
         }
     }
 }
