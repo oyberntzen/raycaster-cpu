@@ -44,12 +44,19 @@ fn main() -> Result<(), Error> {
     //let wall = map.new_tile(raycaster::Tile{
     //    color: raycaster::WallColor::TEXTURE(texture),
     //});
+    let wall = raycaster::Tile{shape: raycaster::Shape::BOX, color: raycaster::Color::SOLID([255; 3])};
     for i in 0..10 {
-        map.set_tile(i, 0, raycaster::Tile::WALL([255; 3]));
-        map.set_tile(i, 9, raycaster::Tile::WALL([255; 3]));
-        map.set_tile(0, i, raycaster::Tile::WALL([255; 3]));
-        map.set_tile(9, i, raycaster::Tile::WALL([255; 3]));
+        map.set_tile(i, 0, wall);
+        map.set_tile(i, 9, wall);
+        map.set_tile(0, i, wall);
+        map.set_tile(9, i, wall);
     }
+
+    let wall2 = raycaster::Tile{
+        shape: raycaster::Shape::AXIS_ALIGNED_BOX(raycaster::AxisAlignedBox { min: Vector2 { x: 0.0, y: 0.0 }, max: Vector2 { x: 0.1, y: 0.1 } }), 
+        color: raycaster::Color::SOLID([255; 3])
+    };
+    map.set_tile(5, 5, wall2);
 
     event_loop.run(move |event, _, control_flow| {
         if let Event::RedrawRequested(_) = event {

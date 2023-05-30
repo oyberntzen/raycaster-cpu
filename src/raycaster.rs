@@ -4,6 +4,9 @@ use cgmath::{Matrix2, Vector2};
 use image::io::Reader as ImageReader;
 use image::{DynamicImage, ImageBuffer, Rgba};
 
+pub mod shape;
+pub use shape::*;
+
 pub struct Camera {
     pos: Vector2<f64>,
     dir_front: Vector2<f64>,
@@ -77,7 +80,7 @@ pub struct Map {
 impl Map {
     pub fn new(width: usize, height: usize) -> Self {
         let mut tiles = Vec::<Tile>::new();
-        tiles.resize(width * height, Tile::VOID);
+        tiles.resize(width * height, Tile{shape: Shape::VOID, color: Color::SOLID([255; 3])});
         Self {
             width,
             height,
@@ -135,20 +138,32 @@ impl Map {
 
         let mut hit = false;
         let mut side = 0;
+        let mut extra_dist = 0.0;
+
+        let hit_tile = self.get_tile(map_pos.x as usize, map_pos.y as usize);
+        let tile_pos = pos - map_pos.cast().unwrap();
+        if let Some(dist) = hit_tile.shape.ray_cast(tile_pos, dir) {
+            return dist;
+        }
 
         while !hit {
+            let mut tile_pos = pos;
             if side_dist.x < side_dist.y {
+                tile_pos += dir*side_dist.x;
                 side_dist.x += delta_dist.x;
                 map_pos.x += step.x;
                 side = 0;
             } else {
+                tile_pos += dir*side_dist.y;
                 side_dist.y += delta_dist.y;
                 map_pos.y += step.y;
                 side = 1;
             }
+            tile_pos -= map_pos.cast().unwrap();
             let hit_tile = self.get_tile(map_pos.x as usize, map_pos.y as usize);
-            if let Tile::WALL(wall) = hit_tile {
+            if let Some(dist) = hit_tile.shape.ray_cast(tile_pos, dir) {
                 hit = true;
+                extra_dist = dist;
             }
         }
 
@@ -157,14 +172,21 @@ impl Map {
         } else {
             side_dist.y - delta_dist.y
         };
-        perp_wall_dist
+        perp_wall_dist + extra_dist
     }
 }
 
 #[derive(Clone, Copy)]
-pub enum Tile {
-    VOID,
-    WALL([u8; 3]),
+pub struct Tile {
+    pub shape: Shape,
+    pub color: Color,
+}
+
+
+#[derive(Clone, Copy)]
+pub enum Color {
+    SOLID([u8; 3]),
+    //Texture
 }
 
 pub fn render(screen: &mut [u8], width: usize, height: usize, camera: &Camera, map: &Map) {
