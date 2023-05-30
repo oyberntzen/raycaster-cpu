@@ -38,23 +38,30 @@ fn main() -> Result<(), Error> {
     };
 
     let mut camera = raycaster::Camera::new(Vector2::new(5.0, 5.0), 0.0, 60f64.to_radians());
-    let mut map = raycaster::Map::new(10, 10);
+    let size = 10;
+    let mut map = raycaster::Map::new(size, size);
 
     //let texture = map.new_texture("textures/wall1.png");
     //let wall = map.new_tile(raycaster::Tile{
     //    color: raycaster::WallColor::TEXTURE(texture),
     //});
-    let wall = raycaster::Tile{shape: raycaster::Shape::Box, color: raycaster::Color::SOLID([255; 3])};
-    for i in 0..10 {
+    let wall = raycaster::Tile {
+        shape: raycaster::Shape::Box,
+        color: raycaster::Color::Test,
+    };
+    for i in 0..size {
         map.set_tile(i, 0, wall);
-        map.set_tile(i, 9, wall);
+        map.set_tile(i, size - 1, wall);
         map.set_tile(0, i, wall);
-        map.set_tile(9, i, wall);
+        map.set_tile(size - 1, i, wall);
     }
 
-    let wall2 = raycaster::Tile{
-        shape: raycaster::Shape::Circle(raycaster::Circle { pos: Vector2 { x: 0.5, y: 0.5 }, radius: 0.5 }), 
-        color: raycaster::Color::SOLID([255; 3])
+    let wall2 = raycaster::Tile {
+        shape: raycaster::Shape::Circle(raycaster::Circle {
+            pos: Vector2 { x: 0.5, y: 0.5 },
+            radius: 0.5,
+        }),
+        color: raycaster::Color::Test,
     };
     map.set_tile(5, 5, wall2);
 
