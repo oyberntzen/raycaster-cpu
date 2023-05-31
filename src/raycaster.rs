@@ -85,10 +85,7 @@ impl Map {
         let mut tiles = Vec::<Tile>::new();
         tiles.resize(
             width * height,
-            Tile {
-                shape: Shape::Void,
-                color: Color::Test,
-            },
+            Tile::new(Shape::Void, vec![])
         );
         Self {
             width,
@@ -126,7 +123,7 @@ impl Map {
         self.height
     }
 
-    fn ray_cast(&self, pos: Vector2<f64>, dir: Vector2<f64>) -> HitInfo {
+    fn ray_cast(&self, pos: Vector2<f64>, dir: Vector2<f64>) -> Vec<HitInfo> {
         let mut map_pos: Vector2<i32> = pos.cast().unwrap();
         let delta_dist = dir.map(|a| 1.0 / a.abs());
 
@@ -145,25 +142,24 @@ impl Map {
 
         let step = dir.map(|a| if a < 0.0 { -1 } else { 1 });
 
+        let mut hits = Vec::new();
+
         let hit_tile = self.get_tile(map_pos.x as usize, map_pos.y as usize);
         let tile_pos = pos - map_pos.cast().unwrap();
         if let Some(shape_info) = hit_tile.shape.ray_cast(tile_pos, dir) {
-            return HitInfo {
+            let hit_info = HitInfo {
                 length: shape_info.length,
                 x: shape_info.x,
-                side: shape_info.side,
-                color: hit_tile.color,
+                color: hit_tile.colors[shape_info.side as usize],
             };
+            hits.push(hit_info);
+            if !hit_info.color.transparent(hit_info.x) {
+                return hits;
+            }
         }
 
         let mut hit = false;
         let mut side = 0;
-        let mut info = HitInfo {
-            length: 0.0,
-            x: 0.0,
-            side: 0,
-            color: Color::Test,
-        };
 
         while !hit {
             let mut tile_pos = pos;
@@ -182,66 +178,88 @@ impl Map {
             //println!("{:?}", map_pos);
             let hit_tile = self.get_tile(map_pos.x as usize, map_pos.y as usize);
             if let Some(shape_info) = hit_tile.shape.ray_cast(tile_pos, dir) {
-                hit = true;
-                info = HitInfo {
+                let mut hit_info = HitInfo {
                     length: shape_info.length,
                     x: shape_info.x,
-                    side: shape_info.side,
-                    color: hit_tile.color,
+                    color: hit_tile.colors[shape_info.side as usize],
+                };
+                let perp_wall_dist = if side == 0 {
+                    side_dist.x - delta_dist.x
+                } else {
+                    side_dist.y - delta_dist.y
+                };
+                hit_info.length += perp_wall_dist;
+                hits.push(hit_info);
+                if !hit_info.color.transparent(hit_info.x) {
+                    hit = true;
                 }
             }
         }
-
-        let perp_wall_dist = if side == 0 {
-            side_dist.x - delta_dist.x
-        } else {
-            side_dist.y - delta_dist.y
-        };
-        info.length += perp_wall_dist;
-        info
+        hits
     }
 }
 
+#[derive(Clone, Copy)]
 struct HitInfo {
     pub length: f64,
     pub x: f64,
-    pub side: u32,
     pub color: Color,
 }
 
 #[derive(Clone, Copy)]
 pub struct Tile {
     pub shape: Shape,
-    pub color: Color,
+    pub colors: [Color; 4],
+}
+
+impl Tile {
+    pub fn new(shape: Shape, colors: Vec<Color>) -> Self {
+        if colors.len() as u32 != shape.sides() {
+            panic!("Wrong number of colors");
+        }
+        let mut tile = Self {
+            shape, colors: [Color::Test; 4]
+        };
+        for i in 0..colors.len() {
+            tile.colors[i] = colors[i];
+        }
+
+        tile
+    }
 }
 
 pub fn render(screen: &mut [u8], width: usize, height: usize, camera: &Camera, map: &Map) {
     let mut x = 0;
     let pos = camera.pos();
     for ray_dir in camera.rays(width as u32) {
-        let info = map.ray_cast(pos, ray_dir);
+        let hits = map.ray_cast(pos, ray_dir);
 
-        let line_height = (width as f64 / info.length) as i32;
-        let draw_start = std::cmp::max(0, -line_height / 2 + (height as i32) / 2);
-        let draw_end = std::cmp::min(height as i32, line_height / 2 + (height as i32) / 2);
 
         for y in 0..height {
             let index = (y * width + x) * 4;
-            if draw_start <= y as i32 && y as i32 <= draw_end {
-                let color = info.color.sample(Vector2 {
-                    x: info.x,
-                    y: ((y as i32 - draw_start) as f64) / ((draw_end - draw_start) as f64),
-                });
-                for i in 0..3 {
-                    screen[index + i] = color[i];
-                }
-            } else {
-                for i in 0..3 {
-                    screen[index + i] = 0x00;
-                }
-                screen[index + 3] = 0xff;
+            for i in 0..3 {
+                screen[index + i] = 0x00;
             }
             screen[index + 3] = 0xff;
+
+            for hit in &hits {
+                let line_height = (width as f64 / hit.length) as i32;
+                let draw_start = std::cmp::max(0, -line_height / 2 + (height as i32) / 2);
+                let draw_end = std::cmp::min(height as i32, line_height / 2 + (height as i32) / 2);
+
+                if draw_start <= y as i32 && y as i32 <= draw_end {
+                    let color = hit.color.sample(Vector2 {
+                        x: hit.x,
+                        y: ((y as i32 - draw_start) as f64) / ((draw_end - draw_start) as f64),
+                    });
+                    for i in 0..3 {
+                        screen[index + i] = color[i];
+                    }
+                    if color[3] == 255 {break;}
+                } else {
+                    break;
+                }
+            }
         }
 
         x += 1;

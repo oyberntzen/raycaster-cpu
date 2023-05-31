@@ -45,10 +45,10 @@ fn main() -> Result<(), Error> {
     //let wall = map.new_tile(raycaster::Tile{
     //    color: raycaster::WallColor::TEXTURE(texture),
     //});
-    let wall = raycaster::Tile {
-        shape: raycaster::Shape::Box,
-        color: raycaster::Color::Test,
-    };
+    let wall = raycaster::Tile::new( 
+        raycaster::Shape::Box,
+        vec![raycaster::Color::Test, raycaster::Color::Test, raycaster::Color::Test, raycaster::Color::Test],
+    );
     for i in 0..size {
         map.set_tile(i, 0, wall);
         map.set_tile(i, size - 1, wall);
@@ -56,31 +56,31 @@ fn main() -> Result<(), Error> {
         map.set_tile(size - 1, i, wall);
     }
 
-    let wall2 = raycaster::Tile {
-        shape: raycaster::Shape::Circle(raycaster::Circle {
+    let wall2 = raycaster::Tile::new(
+        raycaster::Shape::Circle(raycaster::Circle {
             pos: Vector2 { x: 0.5, y: 0.5 },
             radius: 0.5,
         }),
-        color: raycaster::Color::Test,
-    };
+        vec![raycaster::Color::Test],
+    );
     map.set_tile(5, 5, wall2);
 
-    let wall3 = raycaster::Tile {
-        shape: raycaster::Shape::AxisAlignedBox(raycaster::AxisAlignedBox {
+    let wall3 = raycaster::Tile::new(
+        raycaster::Shape::AxisAlignedBox(raycaster::AxisAlignedBox {
             min: Vector2 { x: 0.2, y: 0.2 },
             max: Vector2 { x: 0.3, y: 0.8 },
         }),
-        color: raycaster::Color::Test,
-    };
+        vec![raycaster::Color::Test, raycaster::Color::Solid([255,255,255,0]), raycaster::Color::Test, raycaster::Color::Test],
+    );
     map.set_tile(6, 5, wall3);
 
-    let wall4 = raycaster::Tile {
-        shape: raycaster::Shape::Line(raycaster::Line {
-            start: Vector2 { x: 0.0, y: 0.0 },
-            end: Vector2 { x: 1.0, y: 1.0 },
-        }),
-        color: raycaster::Color::Test,
-    };
+    let wall4 = raycaster::Tile::new(
+        raycaster::Shape::Line(raycaster::Line::new(
+            Vector2 { x: 0.0, y: 0.0 },
+            Vector2 { x: 1.0, y: 1.0 },
+        )),
+        vec![raycaster::Color::Test2, raycaster::Color::Test],
+    );
     map.set_tile(7, 5, wall4);
 
     event_loop.run(move |event, _, control_flow| {

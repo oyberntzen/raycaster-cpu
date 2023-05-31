@@ -27,6 +27,15 @@ impl Shape {
             Self::Line(shape) => shape.ray_cast(pos, dir),
         }
     }
+    pub fn sides(&self) -> u32 {
+        match self {
+            Self::Void => 0,
+            Self::Box => 4,
+            Self::AxisAlignedBox(_) => 4,
+            Self::Circle(_) => 1,
+            Self::Line(_) => 2,
+        }
+    }
 }
 
 pub struct ShapeHitInfo {
@@ -124,9 +133,18 @@ impl Circle {
 pub struct Line {
     pub start: Vector2<f64>,
     pub end: Vector2<f64>,
+    normal: Vector2<f64>,
 }
 
 impl Line {
+    pub fn new(start: Vector2<f64>, end: Vector2<f64>) -> Self {
+        let dir = end - start;
+        let normal = Vector2::new(-dir.y, dir.x);
+        Self {
+            start, end, normal
+        }
+    }
+    
     fn ray_cast(&self, pos: Vector2<f64>, dir: Vector2<f64>) -> Option<ShapeHitInfo> {
         let x1 = pos.x;
         let y1 = pos.y;
@@ -144,7 +162,7 @@ impl Line {
         if t + 0.001 < 0.0 || u < 0.0 || u > 1.0 {
             None
         } else {
-            let side = if (self.end - self.start).dot(dir) > 0.0 {
+            let side = if self.normal.dot(dir) > 0.0 {
                 0
             } else {
                 1
