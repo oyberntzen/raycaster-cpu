@@ -61,7 +61,7 @@ fn main() -> Result<(), Error> {
             pos: Vector2 { x: 0.5, y: 0.5 },
             radius: 0.5,
         }),
-        vec![raycaster::Color::Test],
+        vec![raycaster::Color::Test2],
     );
     map.set_tile(5, 5, wall2);
 
@@ -70,7 +70,7 @@ fn main() -> Result<(), Error> {
             min: Vector2 { x: 0.2, y: 0.2 },
             max: Vector2 { x: 0.3, y: 0.8 },
         }),
-        vec![raycaster::Color::Test, raycaster::Color::Solid([255,255,255,0]), raycaster::Color::Test, raycaster::Color::Test],
+        vec![raycaster::Color::Test, raycaster::Color::Solid([1.0,1.0,1.0,0.0]), raycaster::Color::Test, raycaster::Color::Test],
     );
     map.set_tile(6, 5, wall3);
 

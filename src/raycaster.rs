@@ -236,16 +236,11 @@ pub fn render(screen: &mut [u8], width: usize, height: usize, camera: &Camera, m
 
 
         for y in 0..height {
-            let index = (y * width + x) * 4;
-            for i in 0..3 {
-                screen[index + i] = 0x00;
-            }
-            screen[index + 3] = 0xff;
-
+            let mut pixel_color = [0.0, 0.0, 0.0, 1.0];
             for hit in &hits {
                 let line_height = (width as f64 / hit.length) as i32;
-                let draw_start = std::cmp::max(0, -line_height / 2 + (height as i32) / 2);
-                let draw_end = std::cmp::min(height as i32, line_height / 2 + (height as i32) / 2);
+                let draw_start = -line_height / 2 + (height as i32) / 2;
+                let draw_end = line_height / 2 + (height as i32) / 2;
 
                 if draw_start <= y as i32 && y as i32 <= draw_end {
                     let color = hit.color.sample(Vector2 {
@@ -253,13 +248,20 @@ pub fn render(screen: &mut [u8], width: usize, height: usize, camera: &Camera, m
                         y: ((y as i32 - draw_start) as f64) / ((draw_end - draw_start) as f64),
                     });
                     for i in 0..3 {
-                        screen[index + i] = color[i];
+                        pixel_color[i] += pixel_color[3]*color[3]*color[i];
                     }
-                    if color[3] == 255 {break;}
+                    pixel_color[3] *= 1.0-color[3];
+                    if color[3] == 1.0 {break;}
                 } else {
                     break;
                 }
             }
+
+            let index = (y * width + x) * 4;
+            for i in 0..3 {
+                screen[index + i] = (pixel_color[i]*255.0) as u8;
+            }
+            screen[index + 3] = 0xff;
         }
 
         x += 1;
