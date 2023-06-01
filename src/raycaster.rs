@@ -74,6 +74,7 @@ impl Iterator for RayIterator<'_> {
     }
 }
 
+const MAX_HITS: usize = 8; 
 pub struct Map {
     width: usize,
     height: usize,
@@ -82,7 +83,7 @@ pub struct Map {
 
 impl Map {
     pub fn new(width: usize, height: usize) -> Self {
-        let mut tiles = Vec::<Tile>::new();
+        let mut tiles = Vec::new();
         tiles.resize(
             width * height,
             Tile::new(Shape::Void, vec![])
@@ -123,7 +124,7 @@ impl Map {
         self.height
     }
 
-    fn ray_cast(&self, pos: Vector2<f64>, dir: Vector2<f64>) -> Vec<HitInfo> {
+    fn ray_cast(&self, pos: Vector2<f64>, dir: Vector2<f64>, ray_info: &mut RayInfo) {
         let mut map_pos: Vector2<i32> = pos.cast().unwrap();
         let delta_dist = dir.map(|a| 1.0 / a.abs());
 
@@ -142,8 +143,6 @@ impl Map {
 
         let step = dir.map(|a| if a < 0.0 { -1 } else { 1 });
 
-        let mut hits = Vec::new();
-
         let hit_tile = self.get_tile(map_pos.x as usize, map_pos.y as usize);
         let tile_pos = pos - map_pos.cast().unwrap();
         if let Some(shape_info) = hit_tile.shape.ray_cast(tile_pos, dir) {
@@ -152,14 +151,15 @@ impl Map {
                 x: shape_info.x,
                 color: hit_tile.colors[shape_info.side as usize],
             };
-            hits.push(hit_info);
+            ray_info.hits[ray_info.count] = hit_info;
+            ray_info.count += 1;
             if !hit_info.color.transparent(hit_info.x) {
-                return hits;
+                return;
             }
         }
 
         let mut hit = false;
-        let mut side = 0;
+        let mut side;
 
         while !hit {
             let mut tile_pos = pos;
@@ -189,13 +189,13 @@ impl Map {
                     side_dist.y - delta_dist.y
                 };
                 hit_info.length += perp_wall_dist;
-                hits.push(hit_info);
+                ray_info.hits[ray_info.count] = hit_info;
+                ray_info.count += 1;
                 if !hit_info.color.transparent(hit_info.x) {
                     hit = true;
                 }
             }
         }
-        hits
     }
 }
 
@@ -204,6 +204,12 @@ struct HitInfo {
     pub length: f64,
     pub x: f64,
     pub color: Color,
+}
+
+#[derive(Clone, Copy)]
+struct RayInfo {
+    pub count: usize,
+    pub hits: [HitInfo; MAX_HITS]
 }
 
 #[derive(Clone, Copy)]
@@ -228,42 +234,56 @@ impl Tile {
     }
 }
 
-pub fn render(screen: &mut [u8], width: usize, height: usize, camera: &Camera, map: &Map) {
-    let mut x = 0;
-    let pos = camera.pos();
-    for ray_dir in camera.rays(width as u32) {
-        let hits = map.ray_cast(pos, ray_dir);
+pub struct Renderer {
+    width: usize,
+    height: usize,
+    ray_infos: Vec<RayInfo>,
+}
 
+impl Renderer {
+    pub fn new(width: usize, height: usize) -> Self {
+        let mut ray_infos = Vec::new();
+        ray_infos.resize(width, RayInfo{count: 0, hits: [HitInfo{color: Color::Test, length: 0.0, x: 0.0}; 8]});
+        Self { width, height, ray_infos }
+    }
 
-        for y in 0..height {
-            let mut pixel_color = [0.0, 0.0, 0.0, 1.0];
-            for hit in &hits {
-                let line_height = (width as f64 / hit.length) as i32;
-                let draw_start = -line_height / 2 + (height as i32) / 2;
-                let draw_end = line_height / 2 + (height as i32) / 2;
+    pub fn render(&mut self, screen: &mut [u8], camera: &Camera, map: &Map) {
+        let mut x = 0;
+        let pos = camera.pos();
+        for ray_dir in camera.rays(self.width as u32) {
+            self.ray_infos[x].count = 0;
+            map.ray_cast(pos, ray_dir, &mut self.ray_infos[x]);
+            for y in 0..self.height {
+                let mut pixel_color = [0.0, 0.0, 0.0, 1.0];
+                for i in 0..self.ray_infos[x].count {
+                    let hit = self.ray_infos[x].hits[i];
+                    let line_height = (self.width as f64 / hit.length) as i32;
+                    let draw_start = -line_height / 2 + (self.height as i32) / 2;
+                    let draw_end = line_height / 2 + (self.height as i32) / 2;
 
-                if draw_start <= y as i32 && y as i32 <= draw_end {
-                    let color = hit.color.sample(Vector2 {
-                        x: hit.x,
-                        y: ((y as i32 - draw_start) as f64) / ((draw_end - draw_start) as f64),
-                    });
-                    for i in 0..3 {
-                        pixel_color[i] += pixel_color[3]*color[3]*color[i];
+                    if draw_start <= y as i32 && y as i32 <= draw_end {
+                        let color = hit.color.sample(Vector2 {
+                            x: hit.x,
+                            y: ((y as i32 - draw_start) as f64) / ((draw_end - draw_start) as f64),
+                        });
+                        for i in 0..3 {
+                            pixel_color[i] += pixel_color[3]*color[3]*color[i];
+                        }
+                        pixel_color[3] *= 1.0-color[3];
+                        if color[3] == 1.0 {break;}
+                    } else {
+                        break;
                     }
-                    pixel_color[3] *= 1.0-color[3];
-                    if color[3] == 1.0 {break;}
-                } else {
-                    break;
                 }
+
+                let index = (y * self.width + x) * 4;
+                for i in 0..3 {
+                    screen[index + i] = (pixel_color[i]*255.0) as u8;
+                }
+                screen[index + 3] = 0xff;
             }
 
-            let index = (y * width + x) * 4;
-            for i in 0..3 {
-                screen[index + i] = (pixel_color[i]*255.0) as u8;
-            }
-            screen[index + 3] = 0xff;
+            x += 1;
         }
-
-        x += 1;
     }
 }

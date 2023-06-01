@@ -83,9 +83,11 @@ fn main() -> Result<(), Error> {
     );
     map.set_tile(7, 5, wall4);
 
+    let mut renderer = raycaster::Renderer::new(WIDTH, HEIGHT);
+
     event_loop.run(move |event, _, control_flow| {
         if let Event::RedrawRequested(_) = event {
-            raycaster::render(pixels.frame_mut(), WIDTH, HEIGHT, &camera, &map);
+            renderer.render(pixels.frame_mut(), &camera, &map);
             if let Err(err) = pixels.render() {
                 log_error("pixels.render", err);
                 *control_flow = ControlFlow::Exit;
