@@ -14,8 +14,8 @@ impl Color {
             Self::Test => [pos.x, pos.y, 0.0, 1.0],
             Self::Test2 => {
                 let mut color = [1.0; 4];
-                if pos.x > 0.4 && pos.x < 0.6 && pos.y > 0.4 && pos.y < 0.6 {
-                    color[3] = 0.2;
+                if pos.x > 0.2 && pos.x < 0.8 && pos.y > 0.2 && pos.y < 0.8 {
+                    color = [0.5, 0.5, 1.0, 0.3];
                 }
                 color
             }
