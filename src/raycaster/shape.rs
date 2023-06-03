@@ -140,11 +140,9 @@ impl Line {
     pub fn new(start: Vector2<f64>, end: Vector2<f64>) -> Self {
         let dir = end - start;
         let normal = Vector2::new(-dir.y, dir.x);
-        Self {
-            start, end, normal
-        }
+        Self { start, end, normal }
     }
-    
+
     fn ray_cast(&self, pos: Vector2<f64>, dir: Vector2<f64>) -> Option<ShapeHitInfo> {
         let x1 = pos.x;
         let y1 = pos.y;
@@ -162,11 +160,7 @@ impl Line {
         if t + 0.001 < 0.0 || u < 0.0 || u > 1.0 {
             None
         } else {
-            let side = if self.normal.dot(dir) > 0.0 {
-                0
-            } else {
-                1
-            };
+            let side = if self.normal.dot(dir) > 0.0 { 0 } else { 1 };
             Some(ShapeHitInfo {
                 length: t,
                 x: u,

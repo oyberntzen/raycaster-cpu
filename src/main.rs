@@ -45,9 +45,16 @@ fn main() -> Result<(), Error> {
     //let wall = map.new_tile(raycaster::Tile{
     //    color: raycaster::WallColor::TEXTURE(texture),
     //});
-    let wall = raycaster::Tile::new( 
+    let wall = raycaster::Tile::new(
         raycaster::Shape::Box,
-        vec![raycaster::Color::Test, raycaster::Color::Test, raycaster::Color::Test, raycaster::Color::Test],
+        vec![
+            raycaster::Color::Test,
+            raycaster::Color::Test,
+            raycaster::Color::Test,
+            raycaster::Color::Test,
+        ],
+        raycaster::Color::Test,
+        raycaster::Color::Test,
     );
     for i in 0..size {
         map.set_tile(i, 0, wall);
@@ -62,6 +69,8 @@ fn main() -> Result<(), Error> {
             radius: 0.5,
         }),
         vec![raycaster::Color::Test2],
+        raycaster::Color::Test,
+        raycaster::Color::Test,
     );
     map.set_tile(5, 5, wall2);
 
@@ -70,7 +79,14 @@ fn main() -> Result<(), Error> {
             min: Vector2 { x: 0.2, y: 0.2 },
             max: Vector2 { x: 0.3, y: 0.8 },
         }),
-        vec![raycaster::Color::Test, raycaster::Color::Solid([1.0,1.0,1.0,0.0]), raycaster::Color::Test, raycaster::Color::Test],
+        vec![
+            raycaster::Color::Test,
+            raycaster::Color::Solid([1.0, 1.0, 1.0, 0.0]),
+            raycaster::Color::Test,
+            raycaster::Color::Test,
+        ],
+        raycaster::Color::Test,
+        raycaster::Color::Test,
     );
     map.set_tile(6, 5, wall3);
 
@@ -80,6 +96,8 @@ fn main() -> Result<(), Error> {
             Vector2 { x: 1.0, y: 1.0 },
         )),
         vec![raycaster::Color::Test2, raycaster::Color::Test],
+        raycaster::Color::Test,
+        raycaster::Color::Test,
     );
     map.set_tile(7, 5, wall4);
 

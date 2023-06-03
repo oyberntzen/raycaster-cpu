@@ -1,6 +1,6 @@
 use cgmath::Vector2;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Color {
     Solid([f64; 4]),
     Test,
@@ -24,7 +24,13 @@ impl Color {
 
     pub fn transparent(&self, x: f64) -> bool {
         match self {
-            Self::Solid(color) => if color[3] != 1.0 {true} else {false},
+            Self::Solid(color) => {
+                if color[3] != 1.0 {
+                    true
+                } else {
+                    false
+                }
+            }
             Self::Test => false,
             Self::Test2 => true,
         }

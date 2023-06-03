@@ -74,7 +74,7 @@ impl Iterator for RayIterator<'_> {
     }
 }
 
-const MAX_HITS: usize = 8; 
+const MAX_HITS: usize = 8;
 pub struct Map {
     width: usize,
     height: usize,
@@ -84,10 +84,7 @@ pub struct Map {
 impl Map {
     pub fn new(width: usize, height: usize) -> Self {
         let mut tiles = Vec::new();
-        tiles.resize(
-            width * height,
-            Tile::new(Shape::Void, vec![])
-        );
+        tiles.resize(width * height, Tile::new(Shape::Void, vec![], Color::Test, Color::Test));
         Self {
             width,
             height,
@@ -124,7 +121,12 @@ impl Map {
         self.height
     }
 
-    fn ray_cast(&self, pos: Vector2<f64>, dir: Vector2<f64>, hit_callback: &mut dyn FnMut(Hit) -> bool) {
+    fn ray_cast(
+        &self,
+        pos: Vector2<f64>,
+        dir: Vector2<f64>,
+        hit_callback: &mut dyn FnMut(Hit) -> bool,
+    ) {
         let mut map_pos: Vector2<i32> = pos.cast().unwrap();
         let delta_dist = dir.map(|a| 1.0 / a.abs());
 
@@ -146,30 +148,53 @@ impl Map {
         let hit_tile = self.get_tile(map_pos.x as usize, map_pos.y as usize);
         let tile_pos = pos - map_pos.cast().unwrap();
         if let Some(shape_info) = hit_tile.shape.ray_cast(tile_pos, dir) {
-            let hit_info = Hit::WallHit(WallHit { 
+            let hit_info = Hit::WallHit(WallHit {
                 length: shape_info.length,
                 x: shape_info.x,
                 color: hit_tile.colors[shape_info.side as usize],
             });
-            if hit_callback(hit_info) {return};
+            if hit_callback(hit_info) {
+                return;
+            };
         }
 
         let hit = false;
         let mut side;
+        let mut last_pos = pos;
+        let mut last_map_pos = map_pos;
+        let mut dist = 0.0;
+        let mut last_dist = 0.0;
 
         while !hit {
             let mut tile_pos = pos;
+            last_map_pos = map_pos;
             if side_dist.x < side_dist.y {
+                dist = side_dist.x;
                 tile_pos += dir * side_dist.x;
                 side_dist.x += delta_dist.x;
                 map_pos.x += step.x;
                 side = 0;
             } else {
+                dist = side_dist.y;
                 tile_pos += dir * side_dist.y;
                 side_dist.y += delta_dist.y;
                 map_pos.y += step.y;
                 side = 1;
             }
+
+            let tile = self.get_tile(last_map_pos.x as usize, last_map_pos.y as usize);
+            let floor_hit = FloorHit {
+                pos1: last_pos-last_map_pos.cast().unwrap(),
+                pos2: tile_pos-last_map_pos.cast().unwrap(),
+                dist1: last_dist,
+                dist2: dist,
+                floor_color: tile.floor_color,
+                ceiling_color: tile.ceiling_color,
+            };
+            hit_callback(Hit::FloorHit(floor_hit));
+            last_pos = tile_pos;
+            last_dist = dist;
+
             tile_pos -= map_pos.cast().unwrap();
             //println!("{:?}", map_pos);
             let hit_tile = self.get_tile(map_pos.x as usize, map_pos.y as usize);
@@ -184,37 +209,55 @@ impl Map {
                     x: shape_info.x,
                     color: hit_tile.colors[shape_info.side as usize],
                 });
-                if hit_callback(hit_info) {return;};
+                if hit_callback(hit_info) {
+                    return;
+                };
             }
         }
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 enum Hit {
-    WallHit(WallHit)
+    WallHit(WallHit),
+    FloorHit(FloorHit)
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 struct WallHit {
-    pub length: f64,
-    pub x: f64,
-    pub color: Color,
+    length: f64,
+    x: f64,
+    color: Color,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct FloorHit {
+    pos1: Vector2<f64>,
+    pos2: Vector2<f64>,
+    dist1: f64,
+    dist2: f64,
+    floor_color: Color,
+    ceiling_color: Color,
 }
 
 #[derive(Clone, Copy)]
 pub struct Tile {
     pub shape: Shape,
     pub colors: [Color; 4],
+    pub floor_color: Color,
+    pub ceiling_color: Color,
 }
 
 impl Tile {
-    pub fn new(shape: Shape, colors: Vec<Color>) -> Self {
+    pub fn new(shape: Shape, colors: Vec<Color>, floor_color: Color, ceiling_color: Color) -> Self {
         if colors.len() as u32 != shape.sides() {
             panic!("Wrong number of colors");
         }
         let mut tile = Self {
-            shape, colors: [Color::Test; 4]
+            shape,
+            colors: [Color::Test; 4],
+            floor_color,
+            ceiling_color
         };
         for i in 0..colors.len() {
             tile.colors[i] = colors[i];
@@ -233,12 +276,16 @@ pub struct Renderer {
 impl Renderer {
     pub fn new(width: usize, height: usize) -> Self {
         let mut temp_screen = Vec::new();
-        temp_screen.resize(width*height, [0.0; 4]);
-        Self { width, height, temp_screen }
+        temp_screen.resize(width * height, [0.0; 4]);
+        Self {
+            width,
+            height,
+            temp_screen,
+        }
     }
 
     pub fn render(&mut self, screen: &mut [u8], camera: &Camera, map: &Map) {
-        for i in 0..self.width*self.height {
+        for i in 0..self.width * self.height {
             self.temp_screen[i] = [0.0, 0.0, 0.0, 1.0];
         }
 
@@ -246,45 +293,83 @@ impl Renderer {
         let pos = camera.pos();
         for ray_dir in camera.rays(self.width as u32) {
             let mut left = self.height;
-            map.ray_cast(pos, ray_dir, &mut |hit| {
-                match hit {
-                    Hit::WallHit(wall_hit) => {
-                        let line_height = (self.width as f64 / wall_hit.length) as i32;
-                        let start = -line_height / 2 + (self.height as i32) / 2;
-                        let end = line_height / 2 + (self.height as i32) / 2;
+            map.ray_cast(pos, ray_dir, &mut |hit| match hit {
+                Hit::WallHit(wall_hit) => {
+                    let line_height = (self.width as f64 / wall_hit.length) as i32;
+                    let start = -line_height / 2 + (self.height as i32) / 2;
+                    let end = line_height / 2 + (self.height as i32) / 2;
 
-                        let draw_start = std::cmp::max(start, 0) as usize;
-                        let draw_end = std::cmp::min(end, self.height as i32) as usize;
+                    let draw_start = std::cmp::max(start, 0) as usize;
+                    let draw_end = std::cmp::min(end, self.height as i32) as usize;
 
-                        for y in draw_start..draw_end {
-                            let index = y * self.width + x;
-                            if self.temp_screen[index][3] > 0.0 {
-                                let color = wall_hit.color.sample(Vector2 {
-                                    x: wall_hit.x,
-                                    y: ((y as i32 - start) as f64) / ((end - start) as f64),
-                                });
-                                for i in 0..3 {
-                                    self.temp_screen[index][i] += self.temp_screen[index][3]*color[3]*color[i];
-                                }
-                                self.temp_screen[index][3] *= 1.0-color[3];
-                                if self.temp_screen[index][3] == 0.0 {
-                                    if left != 0 { left -= 1; };
+                    for y in draw_start..draw_end {
+                        let index = y * self.width + x;
+                        if self.temp_screen[index][3] > 0.0 {
+                            let color = wall_hit.color.sample(Vector2 {
+                                x: wall_hit.x,
+                                y: ((y as i32 - start) as f64) / ((end - start) as f64),
+                            });
+                            for i in 0..3 {
+                                self.temp_screen[index][i] +=
+                                    self.temp_screen[index][3] * color[3] * color[i];
+                            }
+                            self.temp_screen[index][3] *= 1.0 - color[3];
+                            if self.temp_screen[index][3] == 0.0 {
+                                if left != 0 {
+                                    left -= 1;
                                 }
                             }
                         }
-                        true
                     }
+                    left == 0
+                }
+                Hit::FloorHit(floor_hit) => {
+                    let h = self.height as f64;
+                    let start = if floor_hit.dist2 == 0.0  { self.height } else {std::cmp::min((h*(1.0+floor_hit.dist2)/(2.0*floor_hit.dist2)) as usize, self.height)};
+                    let end = if floor_hit.dist1 == 0.0  { self.height } else {std::cmp::min((h*(1.0+floor_hit.dist1)/(2.0*floor_hit.dist1)) as usize, self.height)};
+
+                    //println!("{} {}", start, end);
+                    for y in start..end {
+                        let current_dist = h / (2.0 * (y as f64) - h);
+                        let weight = (current_dist - floor_hit.dist1) / (floor_hit.dist2 - floor_hit.dist1);
+                        let floor_pos = weight * floor_hit.pos2 + (1.0 - weight) * floor_hit.pos1;
+                        let index1 = y * self.width + x;
+                        let index2 = (self.height-1-y) * self.width + x;
+                        let color1 = floor_hit.floor_color.sample(floor_pos);
+                        let color2 = floor_hit.ceiling_color.sample(floor_pos);
+                        for i in 0..3 {
+                            self.temp_screen[index1][i] +=
+                                self.temp_screen[index1][3] * color1[3] * color1[i];
+                        }
+                        self.temp_screen[index1][3] *= 1.0 - color1[3];
+                        if self.temp_screen[index1][3] == 0.0 {
+                            if left != 0 {
+                                left -= 1;
+                            }
+                        }
+                        for i in 0..3 {
+                            self.temp_screen[index2][i] +=
+                                self.temp_screen[index2][3] * color2[3] * color2[i];
+                        }
+                        self.temp_screen[index2][3] *= 1.0 - color2[3];
+                        if self.temp_screen[index2][3] == 0.0 {
+                            if left != 0 {
+                                left -= 1;
+                            }
+                        }
+                    }
+                    left == 0
                 }
             });
 
             x += 1;
         }
 
-        for i in 0..self.width*self.height {
+        for i in 0..self.width * self.height {
             for j in 0..3 {
-                screen[i*4+j] = (self.temp_screen[i][j]*255.0) as u8;
+                screen[i * 4 + j] = (self.temp_screen[i][j] * 255.0) as u8;
             }
-            screen[i*4+3] = 255;
+            screen[i * 4 + 3] = 255;
         }
     }
 }
