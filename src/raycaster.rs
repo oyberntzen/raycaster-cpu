@@ -15,16 +15,17 @@ pub struct Camera {
     dir_front: Vector2<f64>,
     dir_right: Vector2<f64>,
     plane: Vector2<f64>,
+    z: f64,
 }
 
 impl Camera {
     pub fn new(pos: Vector2<f64>, rot: f64, fov: f64) -> Self {
-        println!("{}", (fov / 2.0).tan());
         Self {
             pos,
             dir_front: Vector2::new(rot.cos(), rot.sin()),
             dir_right: Vector2::new(rot.sin(), rot.cos()),
             plane: Vector2::new(rot.sin(), rot.cos()) * (fov / 2.0).tan(),
+            z: 0.0
         }
     }
 
@@ -41,6 +42,10 @@ impl Camera {
         self.pos += delta.x * self.dir_right + delta.y * self.dir_front;
     }
 
+    pub fn translate_z(&mut self, delta: f64) {
+        self.z += delta;
+    }
+
     pub fn rays(&self, width: u32) -> RayIterator {
         RayIterator {
             current_x: 0,
@@ -51,6 +56,10 @@ impl Camera {
 
     pub fn pos(&self) -> Vector2<f64> {
         self.pos
+    }
+
+    pub fn z(&self) -> f64 {
+        self.z
     }
 }
 
@@ -85,7 +94,7 @@ impl Map {
         let mut tiles = Vec::new();
         tiles.resize(
             width * height,
-            Tile::new(Shape::Void, vec![], Color::Test, Color::Test),
+            Tile::new(Shape::Void, vec![], Color::Test, 0.0, Color::Test),
         );
         Self {
             width,
@@ -196,6 +205,7 @@ impl Map {
                     dist1: last_dist,
                     dist2: dist,
                     floor_color: tile.floor_color,
+                    floor_height: tile.floor_height,
                     ceiling_color: tile.ceiling_color,
                 };
                 if hit_callback(Hit::FloorHit(floor_hit)) {
@@ -231,26 +241,24 @@ impl Map {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
 enum Hit {
     WallHit(WallHit),
     FloorHit(FloorHit),
 }
 
-#[derive(Clone, Copy, Debug)]
 struct WallHit {
     length: f64,
     x: f64,
     color: Color,
 }
 
-#[derive(Clone, Copy, Debug)]
 struct FloorHit {
     pos1: Vector2<f64>,
     pos2: Vector2<f64>,
     dist1: f64,
     dist2: f64,
     floor_color: Color,
+    floor_height: f64,
     ceiling_color: Color,
 }
 
@@ -259,11 +267,12 @@ pub struct Tile {
     pub shape: Shape,
     pub colors: [Color; 4],
     pub floor_color: Color,
+    pub floor_height: f64,
     pub ceiling_color: Color,
 }
 
 impl Tile {
-    pub fn new(shape: Shape, colors: Vec<Color>, floor_color: Color, ceiling_color: Color) -> Self {
+    pub fn new(shape: Shape, colors: Vec<Color>, floor_color: Color, floor_height: f64, ceiling_color: Color) -> Self {
         if colors.len() as u32 != shape.sides() {
             panic!("Wrong number of colors");
         }
@@ -271,6 +280,7 @@ impl Tile {
             shape,
             colors: [Color::Test; 4],
             floor_color,
+            floor_height,
             ceiling_color,
         };
         for i in 0..colors.len() {
@@ -310,15 +320,14 @@ impl Renderer {
             map.ray_cast(pos, ray_dir, &mut |hit| match hit {
                 Hit::WallHit(wall_hit) => {
                     let line_height = (self.height as f64 / wall_hit.length) as i32;
-                    let start = -line_height / 2 + (self.height as i32) / 2;
-                    let end = line_height / 2 + (self.height as i32) / 2;
+                    let start = -line_height / 2 + (self.height as i32) / 2 + ((camera.z() * self.height as f64 / 2.0) / wall_hit.length) as i32;
+                    let end = line_height / 2 + (self.height as i32) / 2 + ((camera.z() * self.height as f64 / 2.0) / wall_hit.length) as i32;
 
                     let draw_start = std::cmp::max(start, 0) as usize;
                     let draw_end = std::cmp::min(end, self.height as i32) as usize;
 
                     for y in draw_start..draw_end {
-                        let index = y * self.width + x;
-                        if self.temp_screen[index][3] > 0.0 {
+                        if !self.pixel_finished(x, y) {
                             let color = wall_hit.color.sample(Vector2 {
                                 x: wall_hit.x,
                                 y: ((y as i32 - start) as f64) / ((end - start) as f64),
@@ -331,37 +340,21 @@ impl Renderer {
                     left == 0
                 }
                 Hit::FloorHit(floor_hit) => {
+                    let z = floor_hit.floor_height - camera.z();
+                    let start = self.y_from_floor_dist(floor_hit.dist2, z);
+                    let end = self.y_from_floor_dist(floor_hit.dist1, z);
                     let h = self.height as f64;
-                    let start = if floor_hit.dist2 == 0.0 {
-                        self.height
-                    } else {
-                        std::cmp::min(
-                            (h * (1.0 + floor_hit.dist2) / (2.0 * floor_hit.dist2)) as usize,
-                            self.height,
-                        )
-                    };
-                    let end = if floor_hit.dist1 == 0.0 {
-                        self.height
-                    } else {
-                        std::cmp::min(
-                            (h * (1.0 + floor_hit.dist1) / (2.0 * floor_hit.dist1)) as usize,
-                            self.height,
-                        )
-                    };
 
-                    //println!("{} {}", start, end);
                     for y in start..end {
-                        let current_dist = h / (2.0 * (y as f64) - h);
-                        let weight =
-                            (current_dist - floor_hit.dist1) / (floor_hit.dist2 - floor_hit.dist1);
-                        let floor_pos = weight * floor_hit.pos2 + (1.0 - weight) * floor_hit.pos1;
-                        let color1 = floor_hit.floor_color.sample(floor_pos);
-                        let color2 = floor_hit.ceiling_color.sample(floor_pos);
-                        if self.set_pixel(x, y, color1) && left != 0 {
-                            left -= 1;
-                        }
-                        if self.set_pixel(x, self.height - 1 - y, color2) && left != 0 {
-                            left -= 1;
+                        let current_dist = h * (1.0 - z) / (2.0 * (y as f64) - h);
+                        if !self.pixel_finished(x, y) {
+                            let weight =
+                                (current_dist - floor_hit.dist1) / (floor_hit.dist2 - floor_hit.dist1);
+                            let floor_pos = weight * floor_hit.pos2 + (1.0 - weight) * floor_hit.pos1;
+                            let color1 = floor_hit.floor_color.sample(floor_pos);
+                            if self.set_pixel(x, y, color1) && left != 0 {
+                                left -= 1;
+                            }
                         }
                     }
                     left == 0
@@ -381,9 +374,6 @@ impl Renderer {
 
     fn set_pixel(&mut self, x: usize, y: usize, color: [f64; 4]) -> bool {
         let index = y * self.width + x;
-        if self.temp_screen[index][3] == 0.0 {
-            return false;
-        }
         for i in 0..3 {
             self.temp_screen[index][i] += self.temp_screen[index][3] * color[3] * color[i];
         }
@@ -392,6 +382,26 @@ impl Renderer {
             true
         } else {
             false
+        }
+    }
+
+    fn pixel_finished(&self, x: usize, y: usize) -> bool {
+        let index = y * self.width + x;
+        if self.temp_screen[index][3] == 0.0 {
+            true
+        } else {
+            false
+        }
+    }
+
+    fn y_from_floor_dist(&self, dist: f64, z: f64) -> usize {
+        if dist == 0.0 {
+            self.height
+        } else {
+            std::cmp::min(
+                ((self.height as f64 * (1.0 + dist - z)) / (2.0 * dist)) as usize,
+                self.height,
+            )
         }
     }
 }

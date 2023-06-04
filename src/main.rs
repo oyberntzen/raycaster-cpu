@@ -48,12 +48,12 @@ fn main() -> Result<(), Error> {
     let wall = raycaster::Tile::new(
         raycaster::Shape::Box,
         vec![
-            raycaster::Color::Test,
+            raycaster::Color::Test2,
             raycaster::Color::Test,
             raycaster::Color::Test,
             raycaster::Color::Test,
         ],
-        raycaster::Color::Test,
+        raycaster::Color::Test, 0.0,
         raycaster::Color::Test,
     );
     for i in 0..size {
@@ -69,7 +69,7 @@ fn main() -> Result<(), Error> {
             radius: 0.5,
         }),
         vec![raycaster::Color::Test2],
-        raycaster::Color::Test,
+        raycaster::Color::Test, 0.0,
         raycaster::Color::Test,
     );
     map.set_tile(5, 5, wall2);
@@ -85,7 +85,7 @@ fn main() -> Result<(), Error> {
             raycaster::Color::Test,
             raycaster::Color::Test,
         ],
-        raycaster::Color::Test,
+        raycaster::Color::Test, 0.0,
         raycaster::Color::Test,
     );
     map.set_tile(6, 5, wall3);
@@ -96,10 +96,20 @@ fn main() -> Result<(), Error> {
             Vector2 { x: 1.0, y: 1.0 },
         )),
         vec![raycaster::Color::Test2, raycaster::Color::Test],
-        raycaster::Color::Test,
+        raycaster::Color::Test, 0.0,
         raycaster::Color::Test,
     );
-    map.set_tile(7, 5, wall4);
+    map.set_tile(7, 5, wall4); 
+
+    let wall5 = raycaster::Tile::new(
+        raycaster::Shape::Void,
+        vec![],
+        raycaster::Color::Test, 0.2,
+        raycaster::Color::Test,
+    );
+    map.set_tile(4, 4, wall5); 
+
+
 
     let mut renderer = raycaster::Renderer::new(WIDTH, HEIGHT);
 
@@ -136,6 +146,14 @@ fn main() -> Result<(), Error> {
             }
             if input.key_held(VirtualKeyCode::A) {
                 camera.rotate(-ROT_SPEED);
+            }
+
+            const Z_SPEED: f64 = 0.01;
+            if input.key_held(VirtualKeyCode::Up) {
+                camera.translate_z(Z_SPEED);
+            }
+            if input.key_held(VirtualKeyCode::Down) {
+                camera.translate_z(-Z_SPEED);
             }
 
             if let Some(size) = input.window_resized() {

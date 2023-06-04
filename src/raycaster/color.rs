@@ -1,6 +1,6 @@
 use cgmath::Vector2;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 pub enum Color {
     Solid([f64; 4]),
     Test,
