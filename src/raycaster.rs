@@ -309,15 +309,8 @@ impl Renderer {
                                 x: wall_hit.x,
                                 y: ((y as i32 - start) as f64) / ((end - start) as f64),
                             });
-                            for i in 0..3 {
-                                self.temp_screen[index][i] +=
-                                    self.temp_screen[index][3] * color[3] * color[i];
-                            }
-                            self.temp_screen[index][3] *= 1.0 - color[3];
-                            if self.temp_screen[index][3] == 0.0 {
-                                if left != 0 {
-                                    left -= 1;
-                                }
+                            if self.set_pixel(x, y, color) && left != 0 {
+                                left -= 1;
                             }
                         }
                     }
@@ -333,29 +326,13 @@ impl Renderer {
                         let current_dist = h / (2.0 * (y as f64) - h);
                         let weight = (current_dist - floor_hit.dist1) / (floor_hit.dist2 - floor_hit.dist1);
                         let floor_pos = weight * floor_hit.pos2 + (1.0 - weight) * floor_hit.pos1;
-                        let index1 = y * self.width + x;
-                        let index2 = (self.height-1-y) * self.width + x;
                         let color1 = floor_hit.floor_color.sample(floor_pos);
                         let color2 = floor_hit.ceiling_color.sample(floor_pos);
-                        for i in 0..3 {
-                            self.temp_screen[index1][i] +=
-                                self.temp_screen[index1][3] * color1[3] * color1[i];
+                        if self.set_pixel(x, y, color1) && left != 0 {
+                            left -= 1;
                         }
-                        self.temp_screen[index1][3] *= 1.0 - color1[3];
-                        if self.temp_screen[index1][3] == 0.0 {
-                            if left != 0 {
-                                left -= 1;
-                            }
-                        }
-                        for i in 0..3 {
-                            self.temp_screen[index2][i] +=
-                                self.temp_screen[index2][3] * color2[3] * color2[i];
-                        }
-                        self.temp_screen[index2][3] *= 1.0 - color2[3];
-                        if self.temp_screen[index2][3] == 0.0 {
-                            if left != 0 {
-                                left -= 1;
-                            }
+                        if self.set_pixel(x, self.height-1-y, color2) && left != 0 {
+                            left -= 1;
                         }
                     }
                     left == 0
@@ -370,6 +347,23 @@ impl Renderer {
                 screen[i * 4 + j] = (self.temp_screen[i][j] * 255.0) as u8;
             }
             screen[i * 4 + 3] = 255;
+        }
+    }
+
+    fn set_pixel(&mut self, x: usize, y: usize, color: [f64; 4]) -> bool {
+        let index = y * self.width + x;
+        if self.temp_screen[index][3] == 0.0 {
+            return false
+        }
+        for i in 0..3 {
+            self.temp_screen[index][i] +=
+            self.temp_screen[index][3] * color[3] * color[i];
+        }
+        self.temp_screen[index][3] *= 1.0 - color[3];
+        if self.temp_screen[index][3] == 0.0 {
+            true
+        } else {
+            false
         }
     }
 }
