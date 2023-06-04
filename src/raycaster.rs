@@ -74,7 +74,6 @@ impl Iterator for RayIterator<'_> {
     }
 }
 
-const MAX_HITS: usize = 8;
 pub struct Map {
     width: usize,
     height: usize,
@@ -84,7 +83,10 @@ pub struct Map {
 impl Map {
     pub fn new(width: usize, height: usize) -> Self {
         let mut tiles = Vec::new();
-        tiles.resize(width * height, Tile::new(Shape::Void, vec![], Color::Test, Color::Test));
+        tiles.resize(
+            width * height,
+            Tile::new(Shape::Void, vec![], Color::Test, Color::Test),
+        );
         Self {
             width,
             height,
@@ -103,15 +105,15 @@ impl Map {
         self.tiles[y * self.width + x] = tile;
     }
 
-    pub fn get_tile(&self, x: usize, y: usize) -> Tile {
-        if x >= self.width {
-            panic!("x: {} is outside the range [0, {})", x, self.width);
+    pub fn get_tile(&self, x: i32, y: i32) -> Option<Tile> {
+        if x < 0 || x >= self.width as i32 {
+            return None
         }
-        if y >= self.height {
-            panic!("y: {} is outside the range [0, {})", y, self.height);
+        if y < 0 || y >= self.height as i32 {
+            return None
         }
 
-        self.tiles[y * self.width + x]
+        Some(self.tiles[y as usize * self.width + x as usize])
     }
 
     pub fn width(&self) -> usize {
@@ -145,24 +147,28 @@ impl Map {
 
         let step = dir.map(|a| if a < 0.0 { -1 } else { 1 });
 
-        let hit_tile = self.get_tile(map_pos.x as usize, map_pos.y as usize);
-        let tile_pos = pos - map_pos.cast().unwrap();
-        if let Some(shape_info) = hit_tile.shape.ray_cast(tile_pos, dir) {
-            let hit_info = Hit::WallHit(WallHit {
-                length: shape_info.length,
-                x: shape_info.x,
-                color: hit_tile.colors[shape_info.side as usize],
-            });
-            if hit_callback(hit_info) {
-                return;
-            };
+        let hit_tile = self.get_tile(map_pos.x, map_pos.y);
+        if let Some(tile) = hit_tile {
+            let tile_pos = pos - map_pos.cast().unwrap();
+            if let Some(shape_info) = tile.shape.ray_cast(tile_pos, dir) {
+                let hit_info = Hit::WallHit(WallHit {
+                    length: shape_info.length,
+                    x: shape_info.x,
+                    color: tile.colors[shape_info.side as usize],
+                });
+                if hit_callback(hit_info) {
+                    return;
+                };
+            }
+        } else {
+            return
         }
 
         let hit = false;
         let mut side;
         let mut last_pos = pos;
-        let mut last_map_pos = map_pos;
-        let mut dist = 0.0;
+        let mut last_map_pos;
+        let mut dist;
         let mut last_dist = 0.0;
 
         while !hit {
@@ -182,36 +188,44 @@ impl Map {
                 side = 1;
             }
 
-            let tile = self.get_tile(last_map_pos.x as usize, last_map_pos.y as usize);
-            let floor_hit = FloorHit {
-                pos1: last_pos-last_map_pos.cast().unwrap(),
-                pos2: tile_pos-last_map_pos.cast().unwrap(),
-                dist1: last_dist,
-                dist2: dist,
-                floor_color: tile.floor_color,
-                ceiling_color: tile.ceiling_color,
-            };
-            hit_callback(Hit::FloorHit(floor_hit));
+            let hit_tile = self.get_tile(last_map_pos.x, last_map_pos.y);
+            if let Some(tile) = hit_tile {
+                let floor_hit = FloorHit {
+                    pos1: last_pos - last_map_pos.cast().unwrap(),
+                    pos2: tile_pos - last_map_pos.cast().unwrap(),
+                    dist1: last_dist,
+                    dist2: dist,
+                    floor_color: tile.floor_color,
+                    ceiling_color: tile.ceiling_color,
+                };
+                if hit_callback(Hit::FloorHit(floor_hit)) {
+                    return;
+                }
+            } else {
+                return;
+            }
             last_pos = tile_pos;
             last_dist = dist;
 
             tile_pos -= map_pos.cast().unwrap();
             //println!("{:?}", map_pos);
-            let hit_tile = self.get_tile(map_pos.x as usize, map_pos.y as usize);
-            if let Some(shape_info) = hit_tile.shape.ray_cast(tile_pos, dir) {
-                let perp_wall_dist = if side == 0 {
-                    side_dist.x - delta_dist.x
-                } else {
-                    side_dist.y - delta_dist.y
-                };
-                let hit_info = Hit::WallHit(WallHit {
-                    length: shape_info.length + perp_wall_dist,
-                    x: shape_info.x,
-                    color: hit_tile.colors[shape_info.side as usize],
-                });
-                if hit_callback(hit_info) {
-                    return;
-                };
+            let hit_tile = self.get_tile(map_pos.x, map_pos.y);
+            if let Some(tile) = hit_tile {
+                if let Some(shape_info) = tile.shape.ray_cast(tile_pos, dir) {
+                    let perp_wall_dist = if side == 0 {
+                        side_dist.x - delta_dist.x
+                    } else {
+                        side_dist.y - delta_dist.y
+                    };
+                    let hit_info = Hit::WallHit(WallHit {
+                        length: shape_info.length + perp_wall_dist,
+                        x: shape_info.x,
+                        color: tile.colors[shape_info.side as usize],
+                    });
+                    if hit_callback(hit_info) {
+                        return;
+                    };
+                }
             }
         }
     }
@@ -220,7 +234,7 @@ impl Map {
 #[derive(Clone, Copy, Debug)]
 enum Hit {
     WallHit(WallHit),
-    FloorHit(FloorHit)
+    FloorHit(FloorHit),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -257,7 +271,7 @@ impl Tile {
             shape,
             colors: [Color::Test; 4],
             floor_color,
-            ceiling_color
+            ceiling_color,
         };
         for i in 0..colors.len() {
             tile.colors[i] = colors[i];
@@ -318,20 +332,35 @@ impl Renderer {
                 }
                 Hit::FloorHit(floor_hit) => {
                     let h = self.height as f64;
-                    let start = if floor_hit.dist2 == 0.0  { self.height } else {std::cmp::min((h*(1.0+floor_hit.dist2)/(2.0*floor_hit.dist2)) as usize, self.height)};
-                    let end = if floor_hit.dist1 == 0.0  { self.height } else {std::cmp::min((h*(1.0+floor_hit.dist1)/(2.0*floor_hit.dist1)) as usize, self.height)};
+                    let start = if floor_hit.dist2 == 0.0 {
+                        self.height
+                    } else {
+                        std::cmp::min(
+                            (h * (1.0 + floor_hit.dist2) / (2.0 * floor_hit.dist2)) as usize,
+                            self.height,
+                        )
+                    };
+                    let end = if floor_hit.dist1 == 0.0 {
+                        self.height
+                    } else {
+                        std::cmp::min(
+                            (h * (1.0 + floor_hit.dist1) / (2.0 * floor_hit.dist1)) as usize,
+                            self.height,
+                        )
+                    };
 
                     //println!("{} {}", start, end);
                     for y in start..end {
                         let current_dist = h / (2.0 * (y as f64) - h);
-                        let weight = (current_dist - floor_hit.dist1) / (floor_hit.dist2 - floor_hit.dist1);
+                        let weight =
+                            (current_dist - floor_hit.dist1) / (floor_hit.dist2 - floor_hit.dist1);
                         let floor_pos = weight * floor_hit.pos2 + (1.0 - weight) * floor_hit.pos1;
                         let color1 = floor_hit.floor_color.sample(floor_pos);
                         let color2 = floor_hit.ceiling_color.sample(floor_pos);
                         if self.set_pixel(x, y, color1) && left != 0 {
                             left -= 1;
                         }
-                        if self.set_pixel(x, self.height-1-y, color2) && left != 0 {
+                        if self.set_pixel(x, self.height - 1 - y, color2) && left != 0 {
                             left -= 1;
                         }
                     }
@@ -353,11 +382,10 @@ impl Renderer {
     fn set_pixel(&mut self, x: usize, y: usize, color: [f64; 4]) -> bool {
         let index = y * self.width + x;
         if self.temp_screen[index][3] == 0.0 {
-            return false
+            return false;
         }
         for i in 0..3 {
-            self.temp_screen[index][i] +=
-            self.temp_screen[index][3] * color[3] * color[i];
+            self.temp_screen[index][i] += self.temp_screen[index][3] * color[3] * color[i];
         }
         self.temp_screen[index][3] *= 1.0 - color[3];
         if self.temp_screen[index][3] == 0.0 {
