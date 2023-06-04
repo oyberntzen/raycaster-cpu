@@ -295,7 +295,7 @@ impl Renderer {
             let mut left = self.height;
             map.ray_cast(pos, ray_dir, &mut |hit| match hit {
                 Hit::WallHit(wall_hit) => {
-                    let line_height = (self.width as f64 / wall_hit.length) as i32;
+                    let line_height = (self.height as f64 / wall_hit.length) as i32;
                     let start = -line_height / 2 + (self.height as i32) / 2;
                     let end = line_height / 2 + (self.height as i32) / 2;
 
