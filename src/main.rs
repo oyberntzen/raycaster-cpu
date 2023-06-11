@@ -43,7 +43,7 @@ fn main() -> Result<(), Error> {
 
     let mut camera = raycaster::Camera::new(Vector2::new(5.0, 5.0), 0.0, 60f64.to_radians());
     let size = 10;
-    let mut map = raycaster::Map::new(size, size, 2.0);
+    let mut map = raycaster::Map::new(size, size, 10.0);
 
     //let texture = map.new_texture("textures/wall1.png");
     //let wall = map.new_tile(raycaster::Tile{
@@ -58,7 +58,7 @@ fn main() -> Result<(), Error> {
             raycaster::Color::Test,
         ],
         raycaster::Color::Test, 0.0,
-        raycaster::Color::Test, 0.0,
+        raycaster::Color::Test, 1.0,
     );
     for i in 0..size {
         map.set_tile(i, 0, wall);
@@ -155,7 +155,7 @@ fn main() -> Result<(), Error> {
                 camera.rotate(-ROT_SPEED*delta_time);
             }
 
-            const Z_SPEED: f64 = 1.0;
+            const Z_SPEED: f64 = 5.0;
             if input.key_held(VirtualKeyCode::Up) {
                 camera.translate_z(Z_SPEED*delta_time);
             }
