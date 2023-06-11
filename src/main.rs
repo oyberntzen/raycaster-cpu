@@ -9,6 +9,7 @@ use winit::{
     window::WindowBuilder,
 };
 use winit_input_helper::WinitInputHelper;
+use std::time::Instant;
 
 mod raycaster;
 
@@ -30,6 +31,9 @@ fn main() -> Result<(), Error> {
             .build(&event_loop)
             .unwrap()
     };
+
+    let mut last_frame_time = Instant::now();
+    let mut delta_time = 0.0;
 
     let mut pixels = {
         let window_size = window.inner_size();
@@ -104,8 +108,8 @@ fn main() -> Result<(), Error> {
     let wall5 = raycaster::Tile::new(
         raycaster::Shape::Void,
         vec![],
-        raycaster::Color::Test, 0.0,
-        raycaster::Color::Test, 0.2,
+        raycaster::Color::Test, 0.3,
+        raycaster::Color::Test, -0.2,
     );
     map.set_tile(4, 4, wall5); 
 
@@ -115,6 +119,9 @@ fn main() -> Result<(), Error> {
 
     event_loop.run(move |event, _, control_flow| {
         if let Event::RedrawRequested(_) = event {
+            delta_time = last_frame_time.elapsed().as_secs_f64();
+            println!("Delta time: {}ms", delta_time*1000.0);
+            last_frame_time = Instant::now();
             renderer.render(pixels.frame_mut(), &camera, &map);
             if let Err(err) = pixels.render() {
                 log_error("pixels.render", err);
@@ -132,28 +139,28 @@ fn main() -> Result<(), Error> {
                 return;
             }
 
-            const MOVE_SPEED: f64 = 3.0 / 60.0;
+            const MOVE_SPEED: f64 = 3.0;
             if input.key_held(VirtualKeyCode::W) {
-                camera.translate(Vector2::new(0.0, MOVE_SPEED));
+                camera.translate(Vector2::new(0.0, MOVE_SPEED*delta_time));
             }
             if input.key_held(VirtualKeyCode::S) {
-                camera.translate(Vector2::new(0.0, -MOVE_SPEED));
+                camera.translate(Vector2::new(0.0, -MOVE_SPEED*delta_time));
             }
 
-            const ROT_SPEED: f64 = 2.0 / 60.0;
+            const ROT_SPEED: f64 = 2.0;
             if input.key_held(VirtualKeyCode::D) {
-                camera.rotate(ROT_SPEED);
+                camera.rotate(ROT_SPEED*delta_time);
             }
             if input.key_held(VirtualKeyCode::A) {
-                camera.rotate(-ROT_SPEED);
+                camera.rotate(-ROT_SPEED*delta_time);
             }
 
-            const Z_SPEED: f64 = 0.01;
+            const Z_SPEED: f64 = 1.0;
             if input.key_held(VirtualKeyCode::Up) {
-                camera.translate_z(Z_SPEED);
+                camera.translate_z(Z_SPEED*delta_time);
             }
             if input.key_held(VirtualKeyCode::Down) {
-                camera.translate_z(-Z_SPEED);
+                camera.translate_z(-Z_SPEED*delta_time);
             }
 
             if let Some(size) = input.window_resized() {

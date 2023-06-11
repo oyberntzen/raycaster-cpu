@@ -163,7 +163,7 @@ impl Map {
                 let hit_info = Hit::WallHit(WallHit {
                     length: shape_info.length,
                     x: shape_info.x,
-                    color: tile.colors[shape_info.side as usize],
+                    color: &tile.colors[shape_info.side as usize],
                 });
                 if hit_callback(hit_info) {
                     return;
@@ -204,9 +204,9 @@ impl Map {
                     pos2: tile_pos - last_map_pos.cast().unwrap(),
                     dist1: last_dist,
                     dist2: dist,
-                    floor_color: tile.floor_color,
+                    floor_color: &tile.floor_color,
                     floor_height: tile.floor_height,
-                    ceiling_color: tile.ceiling_color,
+                    ceiling_color: &tile.ceiling_color,
                     ceiling_height: tile.ceiling_height
                 };
                 if hit_callback(Hit::FloorHit(floor_hit)) {
@@ -231,7 +231,7 @@ impl Map {
                     let hit_info = Hit::WallHit(WallHit {
                         length: shape_info.length + perp_wall_dist,
                         x: shape_info.x,
-                        color: tile.colors[shape_info.side as usize],
+                        color: &tile.colors[shape_info.side as usize],
                     });
                     if hit_callback(hit_info) {
                         return;
@@ -242,25 +242,25 @@ impl Map {
     }
 }
 
-enum Hit {
-    WallHit(WallHit),
-    FloorHit(FloorHit),
+enum Hit<'a> {
+    WallHit(WallHit<'a>),
+    FloorHit(FloorHit<'a>),
 }
 
-struct WallHit {
+struct WallHit<'a> {
     length: f64,
     x: f64,
-    color: Color,
+    color: &'a Color,
 }
 
-struct FloorHit {
+struct FloorHit<'a> {
     pos1: Vector2<f64>,
     pos2: Vector2<f64>,
     dist1: f64,
     dist2: f64,
-    floor_color: Color,
+    floor_color: &'a Color,
     floor_height: f64,
-    ceiling_color: Color,
+    ceiling_color: &'a Color,
     ceiling_height: f64
 }
 
