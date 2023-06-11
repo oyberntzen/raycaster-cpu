@@ -109,7 +109,7 @@ fn main() -> Result<(), Error> {
         raycaster::Shape::Void,
         vec![],
         raycaster::Color::Test, 1.0,
-        raycaster::Color::Test, 1.5,
+        raycaster::Color::Test, 0.5,
     );
     map.set_tile(4, 4, wall5); 
 

@@ -34,6 +34,7 @@ impl Camera {
 
     pub fn translate_z(&mut self, delta: f64) {
         self.z += delta;
+        println!("{}", self.z);
     }
 
     pub fn rays(&self, width: u32) -> RayIterator {

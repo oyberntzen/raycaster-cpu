@@ -80,12 +80,13 @@ impl Renderer {
 
     fn render_wall(&mut self, x: usize, wall_hit: &WallHit, camera: &Camera, wall_height: f64) -> usize {
         let line_height = (self.height as f64 / wall_hit.length * wall_height) as i32;
-        let mid_point = (self.height as i32) / 2 + (((camera.z() - wall_height/2.0) * self.height as f64 / 2.0) / wall_hit.length) as i32;
+        let mid_point = (self.height as i32) / 2 + ((camera.z()*2.0 - wall_height) * self.height as f64 / (2.0 * wall_hit.length)) as i32;
+        //println!("{} {} {}", camera.z(), line_height, mid_point);
         let start = -line_height / 2 + mid_point;
         let end = line_height / 2 + mid_point;
 
-        let draw_start = std::cmp::max(start, 0) as usize;
-        let draw_end = std::cmp::min(end, self.height as i32) as usize;
+        let draw_start = std::cmp::min(std::cmp::max(start, 0), self.height as i32) as usize;
+        let draw_end = std::cmp::min(std::cmp::max(end, 0), self.height as i32) as usize;
 
         let mut drawn = 0;
         for y in draw_start..draw_end {
@@ -103,7 +104,7 @@ impl Renderer {
     }
 
     fn render_floor(&mut self, x: usize, floor_hit: &FloorHit, camera: &Camera) -> usize {
-        let z = floor_hit.floor_height * 2.0 - camera.z();
+        let z = -camera.z()*2.0 + 1.0 + floor_hit.floor_height*2.0;
         let start = self.y_from_floor_dist(floor_hit.dist2, z);
         let end = self.y_from_floor_dist(floor_hit.dist1, z);
         let h = self.height as f64;
@@ -125,7 +126,7 @@ impl Renderer {
     }
 
     fn render_ceiling(&mut self, x: usize, floor_hit: &FloorHit, camera: &Camera) -> usize {
-        let z = floor_hit.ceiling_height * 2.0 - camera.z() - 2.0;
+        let z = -camera.z()*2.0 - 1.0 + floor_hit.ceiling_height*2.0;
         let start = self.y_from_ceiling_dist(floor_hit.dist1, z);
         let end = self.y_from_ceiling_dist(floor_hit.dist2, z);
         let h = self.height as f64;
