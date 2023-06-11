@@ -43,7 +43,7 @@ fn main() -> Result<(), Error> {
 
     let mut camera = raycaster::Camera::new(Vector2::new(5.0, 5.0), 0.0, 60f64.to_radians());
     let size = 10;
-    let mut map = raycaster::Map::new(size, size);
+    let mut map = raycaster::Map::new(size, size, 2.0);
 
     //let texture = map.new_texture("textures/wall1.png");
     //let wall = map.new_tile(raycaster::Tile{
@@ -74,7 +74,7 @@ fn main() -> Result<(), Error> {
         }),
         vec![raycaster::Color::Test2],
         raycaster::Color::Test, 0.0,
-        raycaster::Color::Test, 0.0,
+        raycaster::Color::Test, 1.0,
     );
     map.set_tile(5, 5, wall2);
 
@@ -90,7 +90,7 @@ fn main() -> Result<(), Error> {
             raycaster::Color::Test,
         ],
         raycaster::Color::Test, 0.0,
-        raycaster::Color::Test, 0.0,
+        raycaster::Color::Test, 1.0,
     );
     map.set_tile(6, 5, wall3);
 
@@ -101,15 +101,15 @@ fn main() -> Result<(), Error> {
         )),
         vec![raycaster::Color::Test2, raycaster::Color::Test],
         raycaster::Color::Test, 0.0,
-        raycaster::Color::Test, 0.0
+        raycaster::Color::Test, 1.0
     );
     map.set_tile(7, 5, wall4); 
 
     let wall5 = raycaster::Tile::new(
         raycaster::Shape::Void,
         vec![],
-        raycaster::Color::Test, 0.3,
-        raycaster::Color::Test, -0.2,
+        raycaster::Color::Test, 1.0,
+        raycaster::Color::Test, 1.5,
     );
     map.set_tile(4, 4, wall5); 
 

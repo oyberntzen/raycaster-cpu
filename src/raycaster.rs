@@ -82,24 +82,25 @@ impl Iterator for RayIterator<'_> {
         }
     }
 }
-
 pub struct Map {
     width: usize,
     height: usize,
     tiles: Vec<Tile>,
+    wall_height: f64
 }
 
 impl Map {
-    pub fn new(width: usize, height: usize) -> Self {
+    pub fn new(width: usize, height: usize, wall_height: f64) -> Self {
         let mut tiles = Vec::new();
         tiles.resize(
             width * height,
-            Tile::new(Shape::Void, vec![], Color::Test, 0.0, Color::Test, 0.0),
+            Tile::new(Shape::Void, vec![], Color::Test, 0.0, Color::Test, wall_height),
         );
         Self {
             width,
             height,
             tiles,
+            wall_height
         }
     }
 
@@ -323,11 +324,11 @@ impl Renderer {
             let mut left = self.height;
             map.ray_cast(pos, ray_dir, &mut |hit| match hit {
                 Hit::WallHit(wall_hit) => {
-                    left -= self.render_wall(x, wall_hit, camera);
+                    left -= self.render_wall(x, wall_hit, camera, map.wall_height);
                     left == 0
                 }
                 Hit::FloorHit(floor_hit) => {
-                    let z = floor_hit.floor_height - camera.z();
+                    let z = floor_hit.floor_height * 2.0 - camera.z();
                     let start = self.y_from_floor_dist(floor_hit.dist2, z);
                     let end = self.y_from_floor_dist(floor_hit.dist1, z);
                     let h = self.height as f64;
@@ -345,7 +346,7 @@ impl Renderer {
                         }
                     }
 
-                    let z = floor_hit.ceiling_height - camera.z();
+                    let z = floor_hit.ceiling_height * 2.0 - camera.z() - 2.0;
                     let start = self.y_from_ceiling_dist(floor_hit.dist1, z);
                     let end = self.y_from_ceiling_dist(floor_hit.dist2, z);
                     let h = self.height as f64;
@@ -400,10 +401,11 @@ impl Renderer {
         }
     }
 
-    fn render_wall(&mut self, x: usize, wall_hit: WallHit, camera: &Camera) -> usize {
-        let line_height = (self.height as f64 / wall_hit.length) as i32;
-        let start = -line_height / 2 + (self.height as i32) / 2 + ((camera.z() * self.height as f64 / 2.0) / wall_hit.length) as i32;
-        let end = line_height / 2 + (self.height as i32) / 2 + ((camera.z() * self.height as f64 / 2.0) / wall_hit.length) as i32;
+    fn render_wall(&mut self, x: usize, wall_hit: WallHit, camera: &Camera, wall_height: f64) -> usize {
+        let line_height = (self.height as f64 / wall_hit.length * wall_height) as i32;
+        let mid_point = (self.height as i32) / 2 + (((camera.z() - wall_height/2.0) * self.height as f64 / 2.0) / wall_hit.length) as i32;
+        let start = -line_height / 2 + mid_point;
+        let end = line_height / 2 + mid_point;
 
         let draw_start = std::cmp::max(start, 0) as usize;
         let draw_end = std::cmp::min(end, self.height as i32) as usize;
