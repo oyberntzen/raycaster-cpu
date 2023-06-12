@@ -1,10 +1,15 @@
 use cgmath::Vector2;
 
-#[derive(Clone, Copy)]
+use image::io::Reader as ImageReader;
+use image::DynamicImage;
+use std::rc::Rc;
+
+#[derive(Clone)]
 pub enum Color {
     Solid([f64; 4]),
     Test,
     Test2,
+    Texture(Rc<Texture>),
 }
 
 impl Color {
@@ -19,20 +24,49 @@ impl Color {
                 }
                 color
             }
+            Self::Texture(texture) => texture.sample(pos.x, pos.y),
+        }
+    }
+}
+
+pub struct Texture {
+    width: usize,
+    height: usize,
+    data: Vec<u8>,
+}
+
+impl Texture {
+    pub fn new(path: &str) -> Self {
+        let img = ImageReader::open(path).unwrap().decode().unwrap();
+        let width = img.width();
+        let height = img.height();
+        let data = if let DynamicImage::ImageRgba8(rgba8) = img {
+            rgba8.into_raw()
+        } else {
+            let rgba8 = img.as_rgba8().unwrap();
+            let mut pixels = Vec::<u8>::new();
+            for pixel in rgba8.pixels() {
+                for i in 0..4 {
+                    pixels.push(pixel[i]);
+                }
+            }
+            pixels
+        };
+        Self {
+            width: width as usize,
+            height: height as usize,
+            data,
         }
     }
 
-    pub fn transparent(&self, x: f64) -> bool {
-        match self {
-            Self::Solid(color) => {
-                if color[3] != 1.0 {
-                    true
-                } else {
-                    false
-                }
-            }
-            Self::Test => false,
-            Self::Test2 => true,
+    pub fn sample(&self, x: f64, y: f64) -> [f64; 4] {
+        let mut color = [0.0; 4];
+        let xi = (x * (self.width as f64)) as usize;
+        let yi = (y * (self.height as f64)) as usize;
+        let index = (yi * self.width + xi) * 4;
+        for i in 0..4 {
+            color[i] = self.data[index + i] as f64 / 255.0;
         }
+        color
     }
 }

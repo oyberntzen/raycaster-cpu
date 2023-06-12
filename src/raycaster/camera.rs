@@ -1,4 +1,4 @@
-use cgmath::{Vector2, Matrix2};
+use cgmath::{Matrix2, Vector2};
 
 pub struct Camera {
     pos: Vector2<f64>,
@@ -15,7 +15,7 @@ impl Camera {
             dir_front: Vector2::new(rot.cos(), rot.sin()),
             dir_right: Vector2::new(rot.sin(), rot.cos()),
             plane: Vector2::new(rot.sin(), rot.cos()) * (fov / 2.0).tan(),
-            z: 0.0
+            z: 0.0,
         }
     }
 

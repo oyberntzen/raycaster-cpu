@@ -2,6 +2,8 @@ use cgmath::Vector2;
 use error_iter::ErrorIter as _;
 use log::error;
 use pixels::{Error, Pixels, SurfaceTexture};
+use std::rc::Rc;
+use std::time::Instant;
 use winit::{
     dpi::LogicalSize,
     event::{Event, VirtualKeyCode},
@@ -9,7 +11,6 @@ use winit::{
     window::WindowBuilder,
 };
 use winit_input_helper::WinitInputHelper;
-use std::time::Instant;
 
 mod raycaster;
 
@@ -43,28 +44,31 @@ fn main() -> Result<(), Error> {
 
     let mut camera = raycaster::Camera::new(Vector2::new(5.0, 5.0), 0.0, 60f64.to_radians());
     let size = 10;
-    let mut map = raycaster::Map::new(size, size, 10.0);
+    let mut map = raycaster::Map::new(size, size, 1.0);
 
     //let texture = map.new_texture("textures/wall1.png");
     //let wall = map.new_tile(raycaster::Tile{
     //    color: raycaster::WallColor::TEXTURE(texture),
     //});
+    let texture = Rc::new(raycaster::Texture::new("textures/wall1.png"));
     let wall = raycaster::Tile::new(
         raycaster::Shape::Box,
         vec![
             raycaster::Color::Test2,
             raycaster::Color::Test,
-            raycaster::Color::Test,
+            raycaster::Color::Texture(texture),
             raycaster::Color::Test,
         ],
-        raycaster::Color::Test, 0.0,
-        raycaster::Color::Test, 1.0,
+        raycaster::Color::Test,
+        0.0,
+        raycaster::Color::Test,
+        1.0,
     );
     for i in 0..size {
-        map.set_tile(i, 0, wall);
-        map.set_tile(i, size - 1, wall);
-        map.set_tile(0, i, wall);
-        map.set_tile(size - 1, i, wall);
+        map.set_tile(i, 0, wall.clone());
+        map.set_tile(i, size - 1, wall.clone());
+        map.set_tile(0, i, wall.clone());
+        map.set_tile(size - 1, i, wall.clone());
     }
 
     let wall2 = raycaster::Tile::new(
@@ -73,8 +77,10 @@ fn main() -> Result<(), Error> {
             radius: 0.5,
         }),
         vec![raycaster::Color::Test2],
-        raycaster::Color::Test, 0.0,
-        raycaster::Color::Test, 1.0,
+        raycaster::Color::Test,
+        0.0,
+        raycaster::Color::Test,
+        1.0,
     );
     map.set_tile(5, 5, wall2);
 
@@ -89,8 +95,10 @@ fn main() -> Result<(), Error> {
             raycaster::Color::Test,
             raycaster::Color::Test,
         ],
-        raycaster::Color::Test, 0.0,
-        raycaster::Color::Test, 1.0,
+        raycaster::Color::Test,
+        0.0,
+        raycaster::Color::Test,
+        1.0,
     );
     map.set_tile(6, 5, wall3);
 
@@ -100,27 +108,29 @@ fn main() -> Result<(), Error> {
             Vector2 { x: 1.0, y: 1.0 },
         )),
         vec![raycaster::Color::Test2, raycaster::Color::Test],
-        raycaster::Color::Test, 0.0,
-        raycaster::Color::Test, 1.0
+        raycaster::Color::Test,
+        0.0,
+        raycaster::Color::Test,
+        1.0,
     );
-    map.set_tile(7, 5, wall4); 
+    map.set_tile(7, 5, wall4);
 
     let wall5 = raycaster::Tile::new(
         raycaster::Shape::Void,
         vec![],
-        raycaster::Color::Test, 1.0,
-        raycaster::Color::Test, 0.5,
+        raycaster::Color::Test,
+        1.0,
+        raycaster::Color::Test,
+        0.5,
     );
-    map.set_tile(4, 4, wall5); 
-
-
+    map.set_tile(4, 4, wall5);
 
     let mut renderer = raycaster::Renderer::new(WIDTH, HEIGHT);
 
     event_loop.run(move |event, _, control_flow| {
         if let Event::RedrawRequested(_) = event {
             delta_time = last_frame_time.elapsed().as_secs_f64();
-            println!("Delta time: {}ms", delta_time*1000.0);
+            println!("Delta time: {}ms", delta_time * 1000.0);
             last_frame_time = Instant::now();
             renderer.render(pixels.frame_mut(), &camera, &map);
             if let Err(err) = pixels.render() {
@@ -141,26 +151,26 @@ fn main() -> Result<(), Error> {
 
             const MOVE_SPEED: f64 = 3.0;
             if input.key_held(VirtualKeyCode::W) {
-                camera.translate(Vector2::new(0.0, MOVE_SPEED*delta_time));
+                camera.translate(Vector2::new(0.0, MOVE_SPEED * delta_time));
             }
             if input.key_held(VirtualKeyCode::S) {
-                camera.translate(Vector2::new(0.0, -MOVE_SPEED*delta_time));
+                camera.translate(Vector2::new(0.0, -MOVE_SPEED * delta_time));
             }
 
             const ROT_SPEED: f64 = 2.0;
             if input.key_held(VirtualKeyCode::D) {
-                camera.rotate(ROT_SPEED*delta_time);
+                camera.rotate(ROT_SPEED * delta_time);
             }
             if input.key_held(VirtualKeyCode::A) {
-                camera.rotate(-ROT_SPEED*delta_time);
+                camera.rotate(-ROT_SPEED * delta_time);
             }
 
             const Z_SPEED: f64 = 5.0;
             if input.key_held(VirtualKeyCode::Up) {
-                camera.translate_z(Z_SPEED*delta_time);
+                camera.translate_z(Z_SPEED * delta_time);
             }
             if input.key_held(VirtualKeyCode::Down) {
-                camera.translate_z(-Z_SPEED*delta_time);
+                camera.translate_z(-Z_SPEED * delta_time);
             }
 
             if let Some(size) = input.window_resized() {

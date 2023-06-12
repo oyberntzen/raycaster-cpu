@@ -10,7 +10,7 @@ pub struct Map {
     width: usize,
     height: usize,
     tiles: Vec<Tile>,
-    pub wall_height: f64
+    pub wall_height: f64,
 }
 
 impl Map {
@@ -18,13 +18,20 @@ impl Map {
         let mut tiles = Vec::new();
         tiles.resize(
             width * height,
-            Tile::new(Shape::Void, vec![], Color::Test, 0.0, Color::Test, wall_height),
+            Tile::new(
+                Shape::Void,
+                vec![],
+                Color::Test,
+                0.0,
+                Color::Test,
+                wall_height,
+            ),
         );
         Self {
             width,
             height,
             tiles,
-            wall_height
+            wall_height,
         }
     }
 
@@ -41,13 +48,13 @@ impl Map {
 
     pub fn get_tile(&self, x: i32, y: i32) -> Option<Tile> {
         if x < 0 || x >= self.width as i32 {
-            return None
+            return None;
         }
         if y < 0 || y >= self.height as i32 {
-            return None
+            return None;
         }
 
-        Some(self.tiles[y as usize * self.width + x as usize])
+        Some(self.tiles[y as usize * self.width + x as usize].clone())
     }
 
     pub fn width(&self) -> usize {
@@ -95,7 +102,7 @@ impl Map {
                 };
             }
         } else {
-            return
+            return;
         }
 
         let hit = false;
@@ -132,7 +139,7 @@ impl Map {
                     floor_color: &tile.floor_color,
                     floor_height: tile.floor_height,
                     ceiling_color: &tile.ceiling_color,
-                    ceiling_height: tile.ceiling_height
+                    ceiling_height: tile.ceiling_height,
                 };
                 if hit_callback(Hit::FloorHit(floor_hit)) {
                     return;
@@ -186,10 +193,10 @@ pub struct FloorHit<'a> {
     pub floor_color: &'a Color,
     pub floor_height: f64,
     pub ceiling_color: &'a Color,
-    pub ceiling_height: f64
+    pub ceiling_height: f64,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct Tile {
     pub shape: Shape,
     pub colors: [Color; 4],
@@ -200,20 +207,27 @@ pub struct Tile {
 }
 
 impl Tile {
-    pub fn new(shape: Shape, colors: Vec<Color>, floor_color: Color, floor_height: f64, ceiling_color: Color, ceiling_height: f64) -> Self {
+    pub fn new(
+        shape: Shape,
+        colors: Vec<Color>,
+        floor_color: Color,
+        floor_height: f64,
+        ceiling_color: Color,
+        ceiling_height: f64,
+    ) -> Self {
         if colors.len() as u32 != shape.sides() {
             panic!("Wrong number of colors");
         }
         let mut tile = Self {
             shape,
-            colors: [Color::Test; 4],
+            colors: [Color::Test, Color::Test, Color::Test, Color::Test],
             floor_color,
             floor_height,
             ceiling_color,
             ceiling_height,
         };
         for i in 0..colors.len() {
-            tile.colors[i] = colors[i];
+            tile.colors[i] = colors[i].clone();
         }
 
         tile
