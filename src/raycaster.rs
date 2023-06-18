@@ -48,16 +48,20 @@ impl Renderer {
             x += 1;
         }
 
-        for i in 0..self.width * self.height {
-            for j in 0..3 {
-                screen[i * 4 + j] = (self.temp_screen[i][j] * 255.0) as u8;
+        for y in 0..self.height {
+            for x in 0..self.width {
+                let index1 = x * self.height + y;
+                let index2 = (y * self.width + x) * 4;
+                for i in 0..3 {
+                    screen[index2 + i] = (self.temp_screen[index1][i] * 255.0) as u8;
+                }
+                screen[index2 + 3] = 255;
             }
-            screen[i * 4 + 3] = 255;
         }
     }
 
     fn set_pixel(&mut self, x: usize, y: usize, color: [f64; 4]) -> bool {
-        let index = y * self.width + x;
+        let index = x * self.height + y;
         for i in 0..3 {
             self.temp_screen[index][i] += self.temp_screen[index][3] * color[3] * color[i];
         }
@@ -70,7 +74,7 @@ impl Renderer {
     }
 
     fn pixel_finished(&self, x: usize, y: usize) -> bool {
-        let index = y * self.width + x;
+        let index = x * self.height + y;
         if self.temp_screen[index][3] == 0.0 {
             true
         } else {

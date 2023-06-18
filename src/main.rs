@@ -46,10 +46,6 @@ fn main() -> Result<(), Error> {
     let size = 10;
     let mut map = raycaster::Map::new(size, size, 1.0);
 
-    //let texture = map.new_texture("textures/wall1.png");
-    //let wall = map.new_tile(raycaster::Tile{
-    //    color: raycaster::WallColor::TEXTURE(texture),
-    //});
     let texture = Rc::new(raycaster::Texture::new("textures/wall1.png"));
     let wall = raycaster::Tile::new(
         raycaster::Shape::Box,
